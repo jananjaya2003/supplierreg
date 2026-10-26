@@ -27,7 +27,17 @@ create table if not exists public.supplier_registrations (
   updated_at                 timestamptz not null default now()
 );
 
-create index if not exists supplier_registrations_status_idx    on public.supplier_registrations (status);
+-- Registration fee = units × unit price. Added after the first release, so
+-- existing tables get the columns here. Old rows become 1 unit at their old fee.
+alter table public.supplier_registrations
+  add column if not exists units      integer       not null default 1 check (units >= 0),
+  add column if not exists unit_price numeric(12,2) not null default 0 check (unit_price >= 0);
+
+update public.supplier_registrations
+   set unit_price = registration_fee
+ where units = 1 and unit_price = 0 and registration_fee > 0;
+
+create index if not exists supplier_registrations_status_idx   on public.supplier_registrations (status);
 create index if not exists supplier_registrations_institute_idx on public.supplier_registrations (institute);
 create index if not exists supplier_registrations_sent_idx      on public.supplier_registrations (application_sent_date);
 
@@ -48,6 +58,24 @@ drop trigger if exists trg_supplier_registrations_updated_at on public.supplier_
 create trigger trg_supplier_registrations_updated_at
   before update on public.supplier_registrations
   for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------
+-- 2b. registration_fee is always units × unit_price, even for direct SQL edits
+-- ---------------------------------------------------------------------
+create or replace function public.set_registration_fee()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.registration_fee := round(new.units * new.unit_price, 2);
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_supplier_registrations_fee on public.supplier_registrations;
+create trigger trg_supplier_registrations_fee
+  before insert or update on public.supplier_registrations
+  for each row execute function public.set_registration_fee();
 
 -- ---------------------------------------------------------------------
 -- 3. Row Level Security

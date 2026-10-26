@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { STATUSES, type Registration, type RegistrationInput } from "@/lib/types";
-import { validateRegistration, type FormErrors } from "@/lib/validation";
+import { previewFee, validateRegistration, type FormErrors } from "@/lib/validation";
+import { formatMoney } from "@/lib/format";
 
 /** Text inputs use list="dl-institutes" / "dl-modes" / "dl-payments", rendered once by the page. */
 interface Props {
@@ -18,7 +19,8 @@ const EMPTY = {
   applications_closing_date: "",
   application_mode: "",
   method_of_payment: "",
-  registration_fee: "",
+  units: "1",
+  unit_price: "",
   other_charges: "",
   application_sent_date: "",
   remarks: "",
@@ -35,7 +37,8 @@ function toValues(r?: Registration | null): Values {
     applications_closing_date: r.applications_closing_date ?? "",
     application_mode: r.application_mode ?? "",
     method_of_payment: r.method_of_payment ?? "",
-    registration_fee: String(r.registration_fee ?? ""),
+    units: String(r.units ?? 1),
+    unit_price: String(r.unit_price ?? ""),
     other_charges: String(r.other_charges ?? ""),
     application_sent_date: r.application_sent_date ?? "",
     remarks: r.remarks ?? "",
@@ -85,6 +88,7 @@ export default function RegistrationForm({ initial, onSubmit, onCancel }: Props)
   }
 
   const cls = (k: keyof FormErrors) => `input ${errors[k] ? "input-error" : ""}`;
+  const fee = previewFee(values.units, values.unit_price);
 
   return (
     <form onSubmit={handleSubmit} noValidate>
@@ -107,8 +111,17 @@ export default function RegistrationForm({ initial, onSubmit, onCancel }: Props)
           <input className={cls("method_of_payment")} value={values.method_of_payment} onChange={set("method_of_payment")} list="dl-payments" placeholder="e.g. People's Bank" maxLength={80} />
         </Field>
 
-        <Field label="Registration fee (LKR)" error={errors.registration_fee}>
-          <input inputMode="decimal" className={cls("registration_fee")} value={values.registration_fee} onChange={set("registration_fee")} placeholder="0.00" />
+        <Field label="Units" error={errors.units}>
+          <input inputMode="numeric" className={cls("units")} value={values.units} onChange={set("units")} placeholder="1" />
+        </Field>
+        <Field label="Unit price (LKR)" error={errors.unit_price}>
+          <input inputMode="decimal" className={cls("unit_price")} value={values.unit_price} onChange={set("unit_price")} placeholder="0.00" />
+        </Field>
+
+        <Field label="Registration fee (LKR) = units × unit price">
+          <output className="input block bg-slate-50 tabular-nums text-slate-700 dark:bg-slate-800/60 dark:text-slate-200" aria-live="polite">
+            {fee === null ? "—" : formatMoney(fee)}
+          </output>
         </Field>
         <Field label="Other charges (LKR)" error={errors.other_charges}>
           <input inputMode="decimal" className={cls("other_charges")} value={values.other_charges} onChange={set("other_charges")} placeholder="0.00" />

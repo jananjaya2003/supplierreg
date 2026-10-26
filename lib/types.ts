@@ -9,6 +9,9 @@ export interface Registration {
   applications_closing_date: string | null;
   application_mode: string | null;
   method_of_payment: string | null;
+  units: number;
+  unit_price: number;
+  /** Always units × unit_price; the database trigger enforces it. */
   registration_fee: number;
   other_charges: number;
   application_sent_date: string | null;

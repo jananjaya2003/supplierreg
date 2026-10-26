@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import StatusBadge from "./StatusBadge";
 import { formatDate, formatMoney } from "@/lib/format";
 import { STATUSES, type Registration, type RegistrationInput } from "@/lib/types";
-import { validateRegistration, type FormErrors } from "@/lib/validation";
+import { previewFee, validateRegistration, type FormErrors } from "@/lib/validation";
 
 export type SortKey =
   | "no" | "institute" | "payments_closing_date" | "applications_closing_date"
-  | "registration_fee" | "other_charges" | "application_sent_date" | "status";
+  | "units" | "unit_price" | "registration_fee" | "other_charges" | "application_sent_date" | "status";
 export type SortState = { key: SortKey; dir: "asc" | "desc" };
 
 interface Props {
@@ -23,7 +23,8 @@ interface Props {
   onInlineSave: (id: string, data: RegistrationInput) => Promise<void>;
 }
 
-type Draft = Record<keyof RegistrationInput, string>;
+// registration_fee is derived from units × unit_price, so it's never edited directly.
+type Draft = Record<Exclude<keyof RegistrationInput, "registration_fee">, string>;
 
 function toDraft(r: Registration): Draft {
   return {
@@ -32,7 +33,8 @@ function toDraft(r: Registration): Draft {
     applications_closing_date: r.applications_closing_date ?? "",
     application_mode: r.application_mode ?? "",
     method_of_payment: r.method_of_payment ?? "",
-    registration_fee: String(r.registration_fee),
+    units: String(r.units),
+    unit_price: String(r.unit_price),
     other_charges: String(r.other_charges),
     application_sent_date: r.application_sent_date ?? "",
     remarks: r.remarks ?? "",
@@ -47,6 +49,8 @@ const HEADERS: { key?: SortKey; label: string; align?: "right" }[] = [
   { key: "applications_closing_date", label: "Application closes" },
   { label: "Mode" },
   { label: "Payment method" },
+  { key: "units", label: "Units", align: "right" },
+  { key: "unit_price", label: "Unit price", align: "right" },
   { key: "registration_fee", label: "Reg. fee", align: "right" },
   { key: "other_charges", label: "Other", align: "right" },
   { key: "application_sent_date", label: "Sent" },
@@ -137,7 +141,7 @@ export default function RegistrationTable({ rows, sort, onSort, flashIds, onOpen
     <>
       {/* Desktop / tablet table */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[1100px] text-left text-sm">
+        <table className="w-full min-w-[1280px] text-left text-sm">
           <thead className="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-wide text-slate-500 backdrop-blur dark:bg-slate-900/90 dark:text-slate-400">
             <tr>
               {HEADERS.map((h) => (
@@ -172,7 +176,11 @@ export default function RegistrationTable({ rows, sort, onSort, flashIds, onOpen
                       <td className="px-2 py-2"><input type="date" {...bind("applications_closing_date")} /></td>
                       <td className="px-2 py-2"><input {...bind("application_mode")} list="dl-modes" /></td>
                       <td className="px-2 py-2"><input {...bind("method_of_payment")} list="dl-payments" /></td>
-                      <td className="px-2 py-2"><input inputMode="decimal" {...bind("registration_fee")} style={{ textAlign: "right" }} /></td>
+                      <td className="w-20 px-2 py-2"><input inputMode="numeric" {...bind("units")} style={{ textAlign: "right" }} /></td>
+                      <td className="px-2 py-2"><input inputMode="decimal" {...bind("unit_price")} style={{ textAlign: "right" }} /></td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-slate-500">
+                        {(() => { const f = previewFee(draft?.units, draft?.unit_price); return f === null ? "—" : formatMoney(f); })()}
+                      </td>
                       <td className="px-2 py-2"><input inputMode="decimal" {...bind("other_charges")} style={{ textAlign: "right" }} /></td>
                       <td className="px-2 py-2"><input type="date" {...bind("application_sent_date")} /></td>
                       <td className="px-2 py-2">
@@ -187,6 +195,8 @@ export default function RegistrationTable({ rows, sort, onSort, flashIds, onOpen
                       <td className="whitespace-nowrap px-3 py-2.5">{formatDate(r.applications_closing_date)}</td>
                       <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{r.application_mode ?? "—"}</td>
                       <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{r.method_of_payment ?? "—"}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{r.units}</td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatMoney(r.unit_price)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatMoney(r.registration_fee)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums">{formatMoney(r.other_charges)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5">{formatDate(r.application_sent_date)}</td>

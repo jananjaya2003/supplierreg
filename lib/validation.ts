@@ -17,6 +17,17 @@ function money(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Registration fee = units × unit price, rounded to cents (same as the DB trigger). */
+export function calcFee(units: number, unitPrice: number): number {
+  return Math.round(units * Math.round(unitPrice * 100)) / 100;
+}
+
+/** Live preview for forms: parses raw input, returns null if either value isn't a number yet. */
+export function previewFee(units: unknown, unitPrice: unknown): number | null {
+  const u = money(units === "" || units === undefined ? 1 : units), p = money(unitPrice);
+  return u === null || p === null ? null : calcFee(u, p);
+}
+
 /**
  * Validates and normalises raw form values. Mirrors the CHECK constraints in
  * supabase/schema.sql so users see friendly messages instead of Postgres errors.
@@ -44,10 +55,18 @@ export function validateRegistration(raw: Record<string, unknown>): {
   // No cross-field date ordering rule: real data has payments closing after
   // applications, so the deadlines are independent.
 
-  const fee = money(raw.registration_fee);
-  if (fee === null) errors.registration_fee = "Enter a number.";
-  else if (fee < 0) errors.registration_fee = "Can't be negative.";
-  else if (fee > 9_999_999_999) errors.registration_fee = "Amount is too large.";
+  const units = money(raw.units === undefined || raw.units === "" ? 1 : raw.units);
+  if (units === null || !Number.isInteger(units)) errors.units = "Enter a whole number.";
+  else if (units < 0) errors.units = "Can't be negative.";
+  else if (units > 1_000_000) errors.units = "Too many units.";
+
+  const price = money(raw.unit_price);
+  if (price === null) errors.unit_price = "Enter a number.";
+  else if (price < 0) errors.unit_price = "Can't be negative.";
+  else if (price > 9_999_999_999) errors.unit_price = "Amount is too large.";
+
+  const fee = units !== null && price !== null ? calcFee(units, price) : 0;
+  if (!errors.units && !errors.unit_price && fee > 9_999_999_999) errors.units = "Units × unit price is too large.";
 
   const other = money(raw.other_charges);
   if (other === null) errors.other_charges = "Enter a number.";
@@ -76,7 +95,9 @@ export function validateRegistration(raw: Record<string, unknown>): {
       application_sent_date: dates.application_sent_date,
       application_mode: optStr("application_mode"),
       method_of_payment: optStr("method_of_payment"),
-      registration_fee: Math.round(fee! * 100) / 100,
+      units: units!,
+      unit_price: Math.round(price! * 100) / 100,
+      registration_fee: fee,
       other_charges: Math.round(other! * 100) / 100,
       remarks,
       status: status as RegistrationInput["status"],

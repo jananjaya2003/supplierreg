@@ -15,6 +15,8 @@ const COLUMNS: { key: keyof Registration | "total"; header: string; width: numbe
   { key: "applications_closing_date", header: "Applications Closing Date", width: 16, kind: "date" },
   { key: "application_mode", header: "Application Mode", width: 16 },
   { key: "method_of_payment", header: "Method of Payment", width: 18 },
+  { key: "units", header: "Units", width: 8 },
+  { key: "unit_price", header: "Unit Price", width: 14, kind: "money" },
   { key: "registration_fee", header: "Registration Fee", width: 14, kind: "money" },
   { key: "other_charges", header: "Other Charges", width: 14, kind: "money" },
   { key: "total", header: "Total", width: 14, kind: "money" },

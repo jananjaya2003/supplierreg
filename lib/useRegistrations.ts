@@ -10,6 +10,8 @@ export type LiveStatus = "connecting" | "live" | "offline";
 function normalise(r: Registration): Registration {
   return {
     ...r,
+    units: Number(r.units ?? 0),
+    unit_price: Number(r.unit_price ?? 0),
     registration_fee: Number(r.registration_fee ?? 0),
     other_charges: Number(r.other_charges ?? 0),
   };

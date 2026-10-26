@@ -3,9 +3,9 @@
 
 insert into public.supplier_registrations
   (no, institute, payments_closing_date, applications_closing_date, application_mode,
-   method_of_payment, registration_fee, other_charges, application_sent_date, remarks, status)
+   method_of_payment, units, unit_price, other_charges, application_sent_date, remarks, status)
 values
-  (1, 'kandy', '2026-10-15', '2026-10-06', 'Hospital', 'People''s Bank', 0, 0, '2026-10-28', null, 'Complete')
+  (1, 'kandy', '2026-10-15', '2026-10-06', 'Hospital', 'People''s Bank', 1, 0, 0, '2026-10-28', null, 'Complete')
 on conflict (no) do nothing;
 
 -- Explicit "no" values don't advance the identity sequence; bump it so new rows start after the seed.
